@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: c6205649cd23ff2b9fcc63a034b601ee566ef236 */
+ * Stub hash: cd79a59ffb33525205eb7dcb058d7b1d991ed597 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Redis___construct, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, options, IS_ARRAY, 1, "null")
@@ -1219,6 +1219,34 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_Redis_zunionstore arginfo_class_Redis_zinterstore
 
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_TYPE_MASK_EX(arginfo_class_Redis_vadd, 0, 3, Redis, MAY_BE_LONG|MAY_BE_FALSE)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, id, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, vector, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, options, IS_ARRAY, 1, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_TYPE_MASK_EX(arginfo_class_Redis_vsim, 0, 2, Redis, MAY_BE_ARRAY|MAY_BE_FALSE)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, vector, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, options, IS_ARRAY, 1, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_TYPE_MASK_EX(arginfo_class_Redis_vsetattr, 0, 3, Redis, MAY_BE_BOOL|MAY_BE_FALSE)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, id, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, attrs, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_TYPE_MASK_EX(arginfo_class_Redis_vgetattr, 0, 3, Redis, MAY_BE_ARRAY|MAY_BE_FALSE)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, id, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, attrs, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Redis_vcard arginfo_class_Redis_expiretime
+
+#define arginfo_class_Redis_vdim arginfo_class_Redis_expiretime
 
 ZEND_METHOD(Redis, __construct);
 ZEND_METHOD(Redis, __destruct);
@@ -1486,7 +1514,12 @@ ZEND_METHOD(Redis, zinterstore);
 ZEND_METHOD(Redis, zscan);
 ZEND_METHOD(Redis, zunion);
 ZEND_METHOD(Redis, zunionstore);
-
+ZEND_METHOD(Redis, vadd);
+ZEND_METHOD(Redis, vsim);
+ZEND_METHOD(Redis, vsetattr);
+ZEND_METHOD(Redis, vgetattr);
+ZEND_METHOD(Redis, vcard);
+ZEND_METHOD(Redis, vdim);
 
 static const zend_function_entry class_Redis_methods[] = {
 	ZEND_ME(Redis, __construct, arginfo_class_Redis___construct, ZEND_ACC_PUBLIC)
@@ -1528,7 +1561,11 @@ static const zend_function_entry class_Redis_methods[] = {
 	ZEND_ME(Redis, decr, arginfo_class_Redis_decr, ZEND_ACC_PUBLIC)
 	ZEND_ME(Redis, decrBy, arginfo_class_Redis_decrBy, ZEND_ACC_PUBLIC)
 	ZEND_ME(Redis, del, arginfo_class_Redis_del, ZEND_ACC_PUBLIC)
-	ZEND_MALIAS(Redis, delete, del, arginfo_class_Redis_delete, ZEND_ACC_PUBLIC|ZEND_ACC_DEPRECATED)
+#if (PHP_VERSION_ID >= 80400)
+	ZEND_RAW_FENTRY("delete", zim_Redis_del, arginfo_class_Redis_delete, ZEND_ACC_PUBLIC|ZEND_ACC_DEPRECATED, NULL, NULL)
+#else
+	ZEND_RAW_FENTRY("delete", zim_Redis_del, arginfo_class_Redis_delete, ZEND_ACC_PUBLIC|ZEND_ACC_DEPRECATED)
+#endif
 	ZEND_ME(Redis, discard, arginfo_class_Redis_discard, ZEND_ACC_PUBLIC)
 	ZEND_ME(Redis, dump, arginfo_class_Redis_dump, ZEND_ACC_PUBLIC)
 	ZEND_ME(Redis, echo, arginfo_class_Redis_echo, ZEND_ACC_PUBLIC)
@@ -1636,7 +1673,11 @@ static const zend_function_entry class_Redis_methods[] = {
 	ZEND_ME(Redis, msetnx, arginfo_class_Redis_msetnx, ZEND_ACC_PUBLIC)
 	ZEND_ME(Redis, multi, arginfo_class_Redis_multi, ZEND_ACC_PUBLIC)
 	ZEND_ME(Redis, object, arginfo_class_Redis_object, ZEND_ACC_PUBLIC)
-	ZEND_MALIAS(Redis, open, connect, arginfo_class_Redis_open, ZEND_ACC_PUBLIC|ZEND_ACC_DEPRECATED)
+#if (PHP_VERSION_ID >= 80400)
+	ZEND_RAW_FENTRY("open", zim_Redis_connect, arginfo_class_Redis_open, ZEND_ACC_PUBLIC|ZEND_ACC_DEPRECATED, NULL, NULL)
+#else
+	ZEND_RAW_FENTRY("open", zim_Redis_connect, arginfo_class_Redis_open, ZEND_ACC_PUBLIC|ZEND_ACC_DEPRECATED)
+#endif
 	ZEND_ME(Redis, pconnect, arginfo_class_Redis_pconnect, ZEND_ACC_PUBLIC)
 	ZEND_ME(Redis, persist, arginfo_class_Redis_persist, ZEND_ACC_PUBLIC)
 	ZEND_ME(Redis, pexpire, arginfo_class_Redis_pexpire, ZEND_ACC_PUBLIC)
@@ -1646,7 +1687,11 @@ static const zend_function_entry class_Redis_methods[] = {
 	ZEND_ME(Redis, pfmerge, arginfo_class_Redis_pfmerge, ZEND_ACC_PUBLIC)
 	ZEND_ME(Redis, ping, arginfo_class_Redis_ping, ZEND_ACC_PUBLIC)
 	ZEND_ME(Redis, pipeline, arginfo_class_Redis_pipeline, ZEND_ACC_PUBLIC)
-	ZEND_MALIAS(Redis, popen, pconnect, arginfo_class_Redis_popen, ZEND_ACC_PUBLIC|ZEND_ACC_DEPRECATED)
+#if (PHP_VERSION_ID >= 80400)
+	ZEND_RAW_FENTRY("popen", zim_Redis_pconnect, arginfo_class_Redis_popen, ZEND_ACC_PUBLIC|ZEND_ACC_DEPRECATED, NULL, NULL)
+#else
+	ZEND_RAW_FENTRY("popen", zim_Redis_pconnect, arginfo_class_Redis_popen, ZEND_ACC_PUBLIC|ZEND_ACC_DEPRECATED)
+#endif
 	ZEND_ME(Redis, psetex, arginfo_class_Redis_psetex, ZEND_ACC_PUBLIC)
 	ZEND_ME(Redis, psubscribe, arginfo_class_Redis_psubscribe, ZEND_ACC_PUBLIC)
 	ZEND_ME(Redis, pttl, arginfo_class_Redis_pttl, ZEND_ACC_PUBLIC)
@@ -1758,11 +1803,12 @@ static const zend_function_entry class_Redis_methods[] = {
 	ZEND_ME(Redis, zscan, arginfo_class_Redis_zscan, ZEND_ACC_PUBLIC)
 	ZEND_ME(Redis, zunion, arginfo_class_Redis_zunion, ZEND_ACC_PUBLIC)
 	ZEND_ME(Redis, zunionstore, arginfo_class_Redis_zunionstore, ZEND_ACC_PUBLIC)
-	ZEND_FE_END
-};
-
-
-static const zend_function_entry class_RedisException_methods[] = {
+	ZEND_ME(Redis, vadd, arginfo_class_Redis_vadd, ZEND_ACC_PUBLIC)
+	ZEND_ME(Redis, vsim, arginfo_class_Redis_vsim, ZEND_ACC_PUBLIC)
+	ZEND_ME(Redis, vsetattr, arginfo_class_Redis_vsetattr, ZEND_ACC_PUBLIC)
+	ZEND_ME(Redis, vgetattr, arginfo_class_Redis_vgetattr, ZEND_ACC_PUBLIC)
+	ZEND_ME(Redis, vcard, arginfo_class_Redis_vcard, ZEND_ACC_PUBLIC)
+	ZEND_ME(Redis, vdim, arginfo_class_Redis_vdim, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
@@ -1771,7 +1817,11 @@ static zend_class_entry *register_class_Redis(void)
 	zend_class_entry ce, *class_entry;
 
 	INIT_CLASS_ENTRY(ce, "Redis", class_Redis_methods);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, 0);
+#else
 	class_entry = zend_register_internal_class_ex(&ce, NULL);
+#endif
 
 	zval const_REDIS_NOT_FOUND_value;
 	ZVAL_LONG(&const_REDIS_NOT_FOUND_value, REDIS_NOT_FOUND);
@@ -1814,6 +1864,12 @@ static zend_class_entry *register_class_Redis(void)
 	zend_string *const_REDIS_STREAM_name = zend_string_init_interned("REDIS_STREAM", sizeof("REDIS_STREAM") - 1, 1);
 	zend_declare_class_constant_ex(class_entry, const_REDIS_STREAM_name, &const_REDIS_STREAM_value, ZEND_ACC_PUBLIC, NULL);
 	zend_string_release(const_REDIS_STREAM_name);
+
+	zval const_REDIS_VECTOR_SET_value;
+	ZVAL_LONG(&const_REDIS_VECTOR_SET_value, REDIS_VECTOR_SET);
+	zend_string *const_REDIS_VECTOR_SET_name = zend_string_init_interned("REDIS_VECTOR_SET", sizeof("REDIS_VECTOR_SET") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_REDIS_VECTOR_SET_name, &const_REDIS_VECTOR_SET_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_REDIS_VECTOR_SET_name);
 
 	zval const_ATOMIC_value;
 	ZVAL_LONG(&const_ATOMIC_value, ATOMIC);
@@ -2114,7 +2170,6 @@ static zend_class_entry *register_class_Redis(void)
 	zend_string *const_OPT_BACKOFF_CAP_name = zend_string_init_interned("OPT_BACKOFF_CAP", sizeof("OPT_BACKOFF_CAP") - 1, 1);
 	zend_declare_class_constant_ex(class_entry, const_OPT_BACKOFF_CAP_name, &const_OPT_BACKOFF_CAP_value, ZEND_ACC_PUBLIC, NULL);
 	zend_string_release(const_OPT_BACKOFF_CAP_name);
-#if (PHP_VERSION_ID >= 80000)
 
 
 	zend_string *attribute_name_SensitiveParameter_func_auth_arg0_0 = zend_string_init_interned("SensitiveParameter", sizeof("SensitiveParameter") - 1, 1);
@@ -2124,7 +2179,6 @@ static zend_class_entry *register_class_Redis(void)
 	zend_string *attribute_name_SensitiveParameter_func_migrate_arg7_0 = zend_string_init_interned("SensitiveParameter", sizeof("SensitiveParameter") - 1, 1);
 	zend_add_parameter_attribute(zend_hash_str_find_ptr(&class_entry->function_table, "migrate", sizeof("migrate") - 1), 7, attribute_name_SensitiveParameter_func_migrate_arg7_0, 0);
 	zend_string_release(attribute_name_SensitiveParameter_func_migrate_arg7_0);
-#endif
 
 	return class_entry;
 }
@@ -2133,8 +2187,12 @@ static zend_class_entry *register_class_RedisException(zend_class_entry *class_e
 {
 	zend_class_entry ce, *class_entry;
 
-	INIT_CLASS_ENTRY(ce, "RedisException", class_RedisException_methods);
+	INIT_CLASS_ENTRY(ce, "RedisException", NULL);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, class_entry_RuntimeException, 0);
+#else
 	class_entry = zend_register_internal_class_ex(&ce, class_entry_RuntimeException);
+#endif
 
 	return class_entry;
 }

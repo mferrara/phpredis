@@ -409,6 +409,20 @@ void redis_uncompress_handler(INTERNAL_FUNCTION_PARAMETERS,
 void redis_pack_handler(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock);
 void redis_unpack_handler(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock);
 
+/* Vector Sets commands implementation */
+int redis_vadd_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
+                   char *kw, char **cmd, int *cmd_len, short *slot,
+                   void **ctx);
+int redis_vsim_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
+                  char *kw, char **cmd, int *cmd_len, short *slot,
+                  void **ctx);
+int redis_vsetattr_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
+                      char *kw, char **cmd, int *cmd_len, short *slot,
+                      void **ctx);
+int redis_vgetattr_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
+                     char *kw, char **cmd, int *cmd_len, short *slot,
+                     void **ctx);
+
 #endif
 
 /* vim: set tabstop=4 softtabstop=4 expandtab shiftwidth=4: */

@@ -51,6 +51,7 @@ typedef enum {
 #define REDIS_ZSET      4
 #define REDIS_HASH      5
 #define REDIS_STREAM    6
+#define REDIS_VECTOR_SET 7
 
 #ifdef PHP_WIN32
 #define PHP_REDIS_API __declspec(dllexport)

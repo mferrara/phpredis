@@ -66,6 +66,14 @@ class Redis {
     /**
      *
      * @var int
+     * @cvalue REDIS_VECTOR_SET
+     *
+     */
+    public const REDIS_VECTOR_SET = UNKNOWN;
+
+    /**
+     *
+     * @var int
      * @cvalue ATOMIC
      *
      */
@@ -4840,6 +4848,81 @@ class Redis {
      * $redis->zUnionStore('dst', ['zs1', 'zs2', 'zs3']);
      */
     public function zunionstore(string $dst, array $keys, ?array $weights = null, ?string $aggregate = null): Redis|int|false;
+
+    /**
+     * Add a vector to a vector set
+     *
+     * @param string $key    The vector set key
+     * @param mixed  $id     The vector id (can be a string or number)
+     * @param mixed  $vector The vector data (array of floats or binary representation)
+     * @param array  $options Optional parameters: DIMENSIONS, DISTANCE_METRIC, etc.
+     *
+     * @return Redis|int|false Returns the number of vectors added, or FALSE on failure
+     *
+     * @see https://redis.io/docs/latest/develop/data-types/vector-sets/
+     */
+    public function vadd(string $key, mixed $id, mixed $vector, ?array $options = null): Redis|int|false;
+
+    /**
+     * Find similar vectors in a vector set
+     *
+     * @param string $key     The vector set key
+     * @param mixed  $vector  The query vector (array of floats or binary representation)
+     * @param array  $options Optional parameters: FILTER, K, RADIUS, etc.
+     *
+     * @return Redis|array|false Returns an array of similar vectors with their scores, or FALSE on failure
+     *
+     * @see https://redis.io/docs/latest/develop/data-types/vector-sets/
+     */
+    public function vsim(string $key, mixed $vector, ?array $options = null): Redis|array|false;
+
+    /**
+     * Set attributes on vectors in a vector set
+     *
+     * @param string $key   The vector set key
+     * @param mixed  $id    The vector id
+     * @param array  $attrs The attributes to set
+     *
+     * @return Redis|bool|false Returns TRUE if successful, FALSE otherwise
+     *
+     * @see https://redis.io/docs/latest/develop/data-types/vector-sets/
+     */
+    public function vsetattr(string $key, mixed $id, array $attrs): Redis|bool|false;
+
+    /**
+     * Get attributes from vectors in a vector set
+     *
+     * @param string $key   The vector set key
+     * @param mixed  $id    The vector id
+     * @param array  $attrs The attributes to get
+     *
+     * @return Redis|array|false Returns the requested attributes, or FALSE on failure
+     *
+     * @see https://redis.io/docs/latest/develop/data-types/vector-sets/
+     */
+    public function vgetattr(string $key, mixed $id, array $attrs): Redis|array|false;
+
+    /**
+     * Get the number of vectors in a vector set
+     *
+     * @param string $key The vector set key
+     *
+     * @return Redis|int|false Returns the number of vectors, or FALSE on failure
+     *
+     * @see https://redis.io/docs/latest/develop/data-types/vector-sets/
+     */
+    public function vcard(string $key): Redis|int|false;
+
+    /**
+     * Get the dimension of vectors in a vector set
+     *
+     * @param string $key The vector set key
+     *
+     * @return Redis|int|false Returns the vector dimension, or FALSE on failure
+     *
+     * @see https://redis.io/docs/latest/develop/data-types/vector-sets/
+     */
+    public function vdim(string $key): Redis|int|false;
 }
 
 class RedisException extends RuntimeException {}

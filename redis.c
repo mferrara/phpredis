@@ -3100,4 +3100,32 @@ PHP_METHOD(Redis, xtrim) {
     REDIS_PROCESS_CMD(xtrim, redis_long_response);
 }
 
+/*
+ * Vector Sets commands
+ */
+
+PHP_METHOD(Redis, vadd) {
+    REDIS_PROCESS_KW_CMD("VADD", redis_vadd_cmd, redis_long_response);
+}
+
+PHP_METHOD(Redis, vsim) {
+    REDIS_PROCESS_KW_CMD("VSIM", redis_vsim_cmd, redis_read_variant_reply);
+}
+
+PHP_METHOD(Redis, vsetattr) {
+    REDIS_PROCESS_KW_CMD("VSETATTR", redis_vsetattr_cmd, redis_boolean_response);
+}
+
+PHP_METHOD(Redis, vgetattr) {
+    REDIS_PROCESS_KW_CMD("VGETATTR", redis_vgetattr_cmd, redis_read_variant_reply);
+}
+
+PHP_METHOD(Redis, vcard) {
+    REDIS_PROCESS_KW_CMD("VCARD", redis_key_cmd, redis_long_response);
+}
+
+PHP_METHOD(Redis, vdim) {
+    REDIS_PROCESS_KW_CMD("VDIM", redis_key_cmd, redis_long_response);
+}
+
 /* vim: set tabstop=4 softtabstop=4 expandtab shiftwidth=4: */

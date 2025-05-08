@@ -5,6 +5,7 @@ require_once __DIR__ . "/RedisTest.php";
 require_once __DIR__ . "/RedisArrayTest.php";
 require_once __DIR__ . "/RedisClusterTest.php";
 require_once __DIR__ . "/RedisSentinelTest.php";
+require_once __DIR__ . "/RedisVectorSetsTest.php";
 
 function getClassArray($classes) {
     $result = [];
@@ -28,6 +29,7 @@ function getTestClass($class) {
         'redis'         => 'Redis_Test',
         'redisarray'    => 'Redis_Array_Test',
         'rediscluster'  => 'Redis_Cluster_Test',
+        'redisvectorsets' => 'Redis_VectorSets_Test',
         'redissentinel' => 'Redis_Sentinel_Test'
     ];
 
