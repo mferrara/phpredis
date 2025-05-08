@@ -5,42 +5,86 @@
 #include "library.h"
 #include <zend_exceptions.h>
 
-/* Helper function to serialize a PHP array to a Redis vector */
-static int serialize_vector(RedisSock *redis_sock, zval *z_vector, smart_string *vector_str) {
+/* Constants for vector formats */
+#define VECTOR_FORMAT_VALUES 1
+#define VECTOR_FORMAT_FP32   2
+
+/* Configuration option for default vector format (can be changed at runtime) */
+static int vector_default_format = VECTOR_FORMAT_FP32;
+
+/* Helper function to serialize a vector as VALUES format */
+static int serialize_vector_values(zval *z_vector, smart_string *cmdstr) {
     zval *z_val;
-    zend_string *tmp_str;
-    HashTable *ht;
-
-    /* Make sure we have an array */
-    if (Z_TYPE_P(z_vector) != IS_ARRAY) {
-        php_error_docref(NULL, E_WARNING, "Vector must be an array of floats or binary data");
-        return FAILURE;
-    }
-
-    ht = Z_ARRVAL_P(z_vector);
+    HashTable *ht = Z_ARRVAL_P(z_vector);
+    int vector_size = zend_hash_num_elements(ht);
     
-    /* Iterate through vector elements */
+    /* Add VALUES keyword */
+    redis_cmd_append_sstr(cmdstr, "VALUES", sizeof("VALUES") - 1);
+    
+    /* Add vector dimension */
+    redis_cmd_append_sstr_long(cmdstr, vector_size);
+    
+    /* Add each value as string */
     ZEND_HASH_FOREACH_VAL(ht, z_val) {
-        /* For now, we only support float values in vectors */
-        if (Z_TYPE_P(z_val) == IS_LONG) {
-            /* Convert integer to float */
-            double dval = (double)Z_LVAL_P(z_val);
-            smart_string_appendl(vector_str, (char*)&dval, sizeof(double));
-        } else if (Z_TYPE_P(z_val) == IS_DOUBLE) {
-            /* Append float value directly */
-            smart_string_appendl(vector_str, (char*)&Z_DVAL_P(z_val), sizeof(double));
-        } else {
-            /* Try to convert to string */
-            zval z_copy;
-            ZVAL_COPY(&z_copy, z_val);
-            convert_to_string(&z_copy);
-            tmp_str = Z_STR(z_copy);
-            
-            smart_string_appendl(vector_str, ZSTR_VAL(tmp_str), ZSTR_LEN(tmp_str));
-            zval_ptr_dtor(&z_copy);
+        switch (Z_TYPE_P(z_val)) {
+            case IS_LONG:
+                redis_cmd_append_sstr_long(cmdstr, Z_LVAL_P(z_val));
+                break;
+            case IS_DOUBLE:
+                redis_cmd_append_sstr_dbl(cmdstr, Z_DVAL_P(z_val));
+                break;
+            default:
+                zend_string *val_str = zval_get_string(z_val);
+                redis_cmd_append_sstr(cmdstr, ZSTR_VAL(val_str), ZSTR_LEN(val_str));
+                zend_string_release(val_str);
+                break;
         }
     } ZEND_HASH_FOREACH_END();
+    
+    return SUCCESS;
+}
 
+/* Helper function to serialize a vector as FP32 binary format */
+static int serialize_vector_fp32(zval *z_vector, smart_string *cmdstr) {
+    zval *z_val;
+    HashTable *ht = Z_ARRVAL_P(z_vector);
+    int vector_size = zend_hash_num_elements(ht);
+    
+    /* Create a buffer to hold binary data */
+    float *fp32_data = emalloc(vector_size * sizeof(float));
+    if (!fp32_data) {
+        return FAILURE;
+    }
+    
+    /* Convert all values to float and store in binary format */
+    int i = 0;
+    ZEND_HASH_FOREACH_VAL(ht, z_val) {
+        if (i >= vector_size) break;
+        
+        if (Z_TYPE_P(z_val) == IS_LONG) {
+            fp32_data[i] = (float)Z_LVAL_P(z_val);
+        } else if (Z_TYPE_P(z_val) == IS_DOUBLE) {
+            fp32_data[i] = (float)Z_DVAL_P(z_val);
+        } else {
+            /* Try to convert to float */
+            zval z_copy;
+            ZVAL_COPY(&z_copy, z_val);
+            convert_to_double(&z_copy);
+            fp32_data[i] = (float)Z_DVAL(z_copy);
+            zval_ptr_dtor(&z_copy);
+        }
+        i++;
+    } ZEND_HASH_FOREACH_END();
+    
+    /* Add FP32 keyword */
+    redis_cmd_append_sstr(cmdstr, "FP32", sizeof("FP32") - 1);
+    
+    /* Add binary data */
+    redis_cmd_append_sstr(cmdstr, (char*)fp32_data, vector_size * sizeof(float));
+    
+    /* Free the buffer */
+    efree(fp32_data);
+    
     return SUCCESS;
 }
 
@@ -55,6 +99,7 @@ int redis_vadd_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     HashTable *ht_options = NULL;
     zend_string *id_str = NULL;
     smart_string cmdstr = {0};
+    int vector_format = vector_default_format; /* Default format is FP32 */
     
     ZEND_PARSE_PARAMETERS_START(3, 4)
         Z_PARAM_STRING(key, key_len)
@@ -64,11 +109,52 @@ int redis_vadd_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
         Z_PARAM_ARRAY_HT_OR_NULL(ht_options)
     ZEND_PARSE_PARAMETERS_END_EX(return FAILURE);
     
+    /* Verify vector is an array */
+    if (Z_TYPE_P(z_vector) != IS_ARRAY) {
+        php_error_docref(NULL, E_WARNING, "Vector must be an array of numeric values");
+        return FAILURE;
+    }
+    
+    /* Check if vector format is specified in options */
+    if (ht_options != NULL) {
+        zval *format_zv = zend_hash_str_find(ht_options, "format", sizeof("format") - 1);
+        if (format_zv != NULL) {
+            if (Z_TYPE_P(format_zv) == IS_LONG) {
+                vector_format = Z_LVAL_P(format_zv);
+            } else if (Z_TYPE_P(format_zv) == IS_STRING) {
+                if (strcasecmp(Z_STRVAL_P(format_zv), "values") == 0) {
+                    vector_format = VECTOR_FORMAT_VALUES;
+                } else if (strcasecmp(Z_STRVAL_P(format_zv), "fp32") == 0) {
+                    vector_format = VECTOR_FORMAT_FP32;
+                }
+            }
+            
+            /* Remove format from options so it's not sent to Redis */
+            zend_hash_str_del(ht_options, "format", sizeof("format") - 1);
+        }
+    }
+    
     /* Initialize command string */
-    redis_cmd_init_sstr(&cmdstr, 3 + (ht_options ? zend_hash_num_elements(ht_options) * 2 : 0), kw, strlen(kw));
+    redis_cmd_init_sstr(&cmdstr, 4 + (ht_options ? zend_hash_num_elements(ht_options) * 2 : 0), kw, strlen(kw));
     
     /* Add key */
     redis_cmd_append_sstr_key(&cmdstr, key, key_len, redis_sock, slot);
+    
+    /* Serialize vector according to format */
+    if (vector_format == VECTOR_FORMAT_VALUES) {
+        if (serialize_vector_values(z_vector, &cmdstr) == FAILURE) {
+            if (id_str) zend_string_release(id_str);
+            smart_string_free(&cmdstr);
+            return FAILURE;
+        }
+    } else {
+        /* Default to FP32 */
+        if (serialize_vector_fp32(z_vector, &cmdstr) == FAILURE) {
+            if (id_str) zend_string_release(id_str);
+            smart_string_free(&cmdstr);
+            return FAILURE;
+        }
+    }
     
     /* Add id - convert to string if needed */
     switch (Z_TYPE_P(z_id)) {
@@ -87,18 +173,6 @@ int redis_vadd_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
             redis_cmd_append_sstr(&cmdstr, ZSTR_VAL(id_str), ZSTR_LEN(id_str));
             break;
     }
-    
-    /* Convert vector array to serialized format */
-    smart_string vector_str = {0};
-    if (serialize_vector(redis_sock, z_vector, &vector_str) == FAILURE) {
-        if (id_str) zend_string_release(id_str);
-        smart_string_free(&cmdstr);
-        return FAILURE;
-    }
-    
-    /* Add vector data */
-    redis_cmd_append_sstr(&cmdstr, vector_str.c, vector_str.len);
-    smart_string_free(&vector_str);
     
     /* Add options if provided */
     if (ht_options) {
@@ -157,6 +231,7 @@ int redis_vsim_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     zval *z_vector, *z_options = NULL;
     HashTable *ht_options = NULL;
     smart_string cmdstr = {0};
+    int vector_format = vector_default_format; /* Default format is FP32 */
     
     ZEND_PARSE_PARAMETERS_START(2, 3)
         Z_PARAM_STRING(key, key_len)
@@ -165,22 +240,50 @@ int redis_vsim_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
         Z_PARAM_ARRAY_HT_OR_NULL(ht_options)
     ZEND_PARSE_PARAMETERS_END_EX(return FAILURE);
     
+    /* Verify vector is an array */
+    if (Z_TYPE_P(z_vector) != IS_ARRAY) {
+        php_error_docref(NULL, E_WARNING, "Vector must be an array of numeric values");
+        return FAILURE;
+    }
+    
+    /* Check if vector format is specified in options */
+    if (ht_options != NULL) {
+        zval *format_zv = zend_hash_str_find(ht_options, "format", sizeof("format") - 1);
+        if (format_zv != NULL) {
+            if (Z_TYPE_P(format_zv) == IS_LONG) {
+                vector_format = Z_LVAL_P(format_zv);
+            } else if (Z_TYPE_P(format_zv) == IS_STRING) {
+                if (strcasecmp(Z_STRVAL_P(format_zv), "values") == 0) {
+                    vector_format = VECTOR_FORMAT_VALUES;
+                } else if (strcasecmp(Z_STRVAL_P(format_zv), "fp32") == 0) {
+                    vector_format = VECTOR_FORMAT_FP32;
+                }
+            }
+            
+            /* Remove format from options so it's not sent to Redis */
+            zend_hash_str_del(ht_options, "format", sizeof("format") - 1);
+        }
+    }
+    
     /* Initialize command string */
-    redis_cmd_init_sstr(&cmdstr, 2 + (ht_options ? zend_hash_num_elements(ht_options) * 2 : 0), kw, strlen(kw));
+    redis_cmd_init_sstr(&cmdstr, 3 + (ht_options ? zend_hash_num_elements(ht_options) * 2 : 0), kw, strlen(kw));
     
     /* Add key */
     redis_cmd_append_sstr_key(&cmdstr, key, key_len, redis_sock, slot);
     
-    /* Convert vector array to serialized format */
-    smart_string vector_str = {0};
-    if (serialize_vector(redis_sock, z_vector, &vector_str) == FAILURE) {
-        smart_string_free(&cmdstr);
-        return FAILURE;
+    /* Serialize vector according to format */
+    if (vector_format == VECTOR_FORMAT_VALUES) {
+        if (serialize_vector_values(z_vector, &cmdstr) == FAILURE) {
+            smart_string_free(&cmdstr);
+            return FAILURE;
+        }
+    } else {
+        /* Default to FP32 */
+        if (serialize_vector_fp32(z_vector, &cmdstr) == FAILURE) {
+            smart_string_free(&cmdstr);
+            return FAILURE;
+        }
     }
-    
-    /* Add vector data */
-    redis_cmd_append_sstr(&cmdstr, vector_str.c, vector_str.len);
-    smart_string_free(&vector_str);
     
     /* Add options if provided */
     if (ht_options) {
