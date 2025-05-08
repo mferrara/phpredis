@@ -88,17 +88,30 @@ int redis_vadd_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
             break;
     }
     
-    /* Convert vector array to serialized format */
-    smart_string vector_str = {0};
-    if (serialize_vector(redis_sock, z_vector, &vector_str) == FAILURE) {
-        if (id_str) zend_string_release(id_str);
-        smart_string_free(&cmdstr);
-        return FAILURE;
-    }
+    /* Add VALUES keyword for proper vector format */
+    redis_cmd_append_sstr(&cmdstr, "VALUES", sizeof("VALUES") - 1);
     
-    /* Add vector data */
-    redis_cmd_append_sstr(&cmdstr, vector_str.c, vector_str.len);
-    smart_string_free(&vector_str);
+    /* Get vector size and append it */
+    HashTable *ht_vector = Z_ARRVAL_P(z_vector);
+    redis_cmd_append_sstr_long(&cmdstr, zend_hash_num_elements(ht_vector));
+    
+    /* Append each vector value as individual string */
+    zval *z_val;
+    ZEND_HASH_FOREACH_VAL(ht_vector, z_val) {
+        switch (Z_TYPE_P(z_val)) {
+            case IS_LONG:
+                redis_cmd_append_sstr_long(&cmdstr, Z_LVAL_P(z_val));
+                break;
+            case IS_DOUBLE:
+                redis_cmd_append_sstr_dbl(&cmdstr, Z_DVAL_P(z_val));
+                break;
+            default:
+                zend_string *val_str = zval_get_string(z_val);
+                redis_cmd_append_sstr(&cmdstr, ZSTR_VAL(val_str), ZSTR_LEN(val_str));
+                zend_string_release(val_str);
+                break;
+        }
+    } ZEND_HASH_FOREACH_END();
     
     /* Add options if provided */
     if (ht_options) {
@@ -171,16 +184,27 @@ int redis_vsim_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     /* Add key */
     redis_cmd_append_sstr_key(&cmdstr, key, key_len, redis_sock, slot);
     
-    /* Convert vector array to serialized format */
-    smart_string vector_str = {0};
-    if (serialize_vector(redis_sock, z_vector, &vector_str) == FAILURE) {
-        smart_string_free(&cmdstr);
-        return FAILURE;
-    }
+    /* Add vector size and append each vector value */
+    HashTable *ht_vector = Z_ARRVAL_P(z_vector);
+    redis_cmd_append_sstr_long(&cmdstr, zend_hash_num_elements(ht_vector));
     
-    /* Add vector data */
-    redis_cmd_append_sstr(&cmdstr, vector_str.c, vector_str.len);
-    smart_string_free(&vector_str);
+    /* Append each vector value as individual string */
+    zval *z_val;
+    ZEND_HASH_FOREACH_VAL(ht_vector, z_val) {
+        switch (Z_TYPE_P(z_val)) {
+            case IS_LONG:
+                redis_cmd_append_sstr_long(&cmdstr, Z_LVAL_P(z_val));
+                break;
+            case IS_DOUBLE:
+                redis_cmd_append_sstr_dbl(&cmdstr, Z_DVAL_P(z_val));
+                break;
+            default:
+                zend_string *val_str = zval_get_string(z_val);
+                redis_cmd_append_sstr(&cmdstr, ZSTR_VAL(val_str), ZSTR_LEN(val_str));
+                zend_string_release(val_str);
+                break;
+        }
+    } ZEND_HASH_FOREACH_END();
     
     /* Add options if provided */
     if (ht_options) {
