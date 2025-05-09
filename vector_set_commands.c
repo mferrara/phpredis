@@ -12,6 +12,48 @@
 /* Configuration option for default vector format (can be changed at runtime) */
 static int vector_default_format = VECTOR_FORMAT_FP32;
 
+/* Implementation of VCARD command */
+int redis_vcard_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
+                   char *kw, char **cmd, int *cmd_len, short *slot,
+                   void **ctx)
+{
+    char *key;
+    size_t key_len;
+    
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STRING(key, key_len)
+    ZEND_PARSE_PARAMETERS_END_EX(return FAILURE);
+    
+    // Command is simply VCARD key
+    *cmd_len = REDIS_CMD_SPPRINTF(cmd, kw, "s", key, key_len);
+    
+    // Set slot if in cluster mode
+    if (slot) *slot = cluster_hash_key(key, key_len);
+    
+    return SUCCESS;
+}
+
+/* Implementation of VDIM command */
+int redis_vdim_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
+                  char *kw, char **cmd, int *cmd_len, short *slot,
+                  void **ctx)
+{
+    char *key;
+    size_t key_len;
+    
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STRING(key, key_len)
+    ZEND_PARSE_PARAMETERS_END_EX(return FAILURE);
+    
+    // Command is simply VDIM key
+    *cmd_len = REDIS_CMD_SPPRINTF(cmd, kw, "s", key, key_len);
+    
+    // Set slot if in cluster mode
+    if (slot) *slot = cluster_hash_key(key, key_len);
+    
+    return SUCCESS;
+}
+
 /* Helper function to serialize a vector as VALUES format */
 static int serialize_vector_values(zval *z_vector, smart_string *cmdstr) {
     zval *z_val;
@@ -334,53 +376,25 @@ int redis_vsetattr_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
                        char *kw, char **cmd, int *cmd_len, short *slot,
                        void **ctx)
 {
-    char *key, *id;
-    size_t key_len, id_len;
-    zval *z_attrs;
-    HashTable *ht_attrs;
+    char *key, *id, *json_str;
+    size_t key_len, id_len, json_len;
     smart_string cmdstr = {0};
     
     ZEND_PARSE_PARAMETERS_START(3, 3)
         Z_PARAM_STRING(key, key_len)
         Z_PARAM_STRING(id, id_len)
-        Z_PARAM_ARRAY_HT(ht_attrs)
+        Z_PARAM_STRING(json_str, json_len)
     ZEND_PARSE_PARAMETERS_END_EX(return FAILURE);
     
     /* Initialize command string */
-    redis_cmd_init_sstr(&cmdstr, 2 + (zend_hash_num_elements(ht_attrs) * 2), kw, strlen(kw));
+    redis_cmd_init_sstr(&cmdstr, 3, kw, strlen(kw));
     
     /* Add key and ID */
     redis_cmd_append_sstr_key(&cmdstr, key, key_len, redis_sock, slot);
     redis_cmd_append_sstr(&cmdstr, id, id_len);
     
-    /* Add attributes */
-    zend_string *attr_key;
-    zval *z_val;
-    
-    ZEND_HASH_FOREACH_STR_KEY_VAL(ht_attrs, attr_key, z_val) {
-        if (attr_key == NULL) continue;
-        
-        /* Add attribute name */
-        redis_cmd_append_sstr(&cmdstr, ZSTR_VAL(attr_key), ZSTR_LEN(attr_key));
-        
-        /* Add attribute value */
-        switch (Z_TYPE_P(z_val)) {
-            case IS_STRING:
-                redis_cmd_append_sstr(&cmdstr, Z_STRVAL_P(z_val), Z_STRLEN_P(z_val));
-                break;
-            case IS_LONG:
-                redis_cmd_append_sstr_long(&cmdstr, Z_LVAL_P(z_val));
-                break;
-            case IS_DOUBLE:
-                redis_cmd_append_sstr_dbl(&cmdstr, Z_DVAL_P(z_val));
-                break;
-            default:
-                zend_string *val_str = zval_get_string(z_val);
-                redis_cmd_append_sstr(&cmdstr, ZSTR_VAL(val_str), ZSTR_LEN(val_str));
-                zend_string_release(val_str);
-                break;
-        }
-    } ZEND_HASH_FOREACH_END();
+    /* Add JSON object as a string */
+    redis_cmd_append_sstr(&cmdstr, json_str, json_len);
     
     /* Return the command */
     *cmd = cmdstr.c;
