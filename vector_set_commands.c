@@ -259,7 +259,7 @@ int redis_vadd_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     /* Return the command */
     *cmd = cmdstr.c;
     *cmd_len = cmdstr.len;
-    
+
     return SUCCESS;
 }
 
@@ -367,7 +367,7 @@ int redis_vsim_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     /* Return the command */
     *cmd = cmdstr.c;
     *cmd_len = cmdstr.len;
-    
+
     return SUCCESS;
 }
 
@@ -399,7 +399,7 @@ int redis_vsetattr_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     /* Return the command */
     *cmd = cmdstr.c;
     *cmd_len = cmdstr.len;
-    
+
     return SUCCESS;
 }
 
@@ -410,34 +410,23 @@ int redis_vgetattr_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 {
     char *key, *id;
     size_t key_len, id_len;
-    zval *z_attrs;
-    HashTable *ht_attrs;
     smart_string cmdstr = {0};
     
-    ZEND_PARSE_PARAMETERS_START(3, 3)
+    ZEND_PARSE_PARAMETERS_START(2, 2)
         Z_PARAM_STRING(key, key_len)
         Z_PARAM_STRING(id, id_len)
-        Z_PARAM_ARRAY_HT(ht_attrs)
     ZEND_PARSE_PARAMETERS_END_EX(return FAILURE);
     
     /* Initialize command string */
-    redis_cmd_init_sstr(&cmdstr, 2 + zend_hash_num_elements(ht_attrs), kw, strlen(kw));
+    redis_cmd_init_sstr(&cmdstr, 2, kw, strlen(kw));
     
     /* Add key and ID */
     redis_cmd_append_sstr_key(&cmdstr, key, key_len, redis_sock, slot);
     redis_cmd_append_sstr(&cmdstr, id, id_len);
     
-    /* Add attribute names */
-    zval *z_attr;
-    ZEND_HASH_FOREACH_VAL(ht_attrs, z_attr) {
-        zend_string *attr_str = zval_get_string(z_attr);
-        redis_cmd_append_sstr(&cmdstr, ZSTR_VAL(attr_str), ZSTR_LEN(attr_str));
-        zend_string_release(attr_str);
-    } ZEND_HASH_FOREACH_END();
-    
     /* Return the command */
     *cmd = cmdstr.c;
     *cmd_len = cmdstr.len;
-    
+
     return SUCCESS;
 }
